@@ -1,3 +1,24 @@
+const mergeAudioStreams = (desktopStream, voiceStream) => {
+  const context = new AudioContext();
+    
+  // Create a couple of sources
+  const source1 = context.createMediaStreamSource(desktopStream);
+  const source2 = context.createMediaStreamSource(voiceStream);
+  const destination = context.createMediaStreamDestination();
+  
+  const desktopGain = context.createGain();
+  const voiceGain = context.createGain();
+    
+  desktopGain.gain.value = 0.7;
+  voiceGain.gain.value = 0.7;
+   
+  source1.connect(desktopGain).connect(destination);
+  // Connect source2
+  source2.connect(voiceGain).connect(destination);
+    
+  return destination.stream.getAudioTracks();
+};
+
 
 export const createOffer = async (connection, localStream, userToCall, doOffer, database, username) => {
   try {
@@ -15,11 +36,15 @@ export const createOffer = async (connection, localStream, userToCall, doOffer, 
 
 export const initiateLocalStream = async () => {
   try {
-    const stream = startCapture({
-      video: true
-    })
+    // const videoStream = navigator.mediaDevices.getDisplayMedia(
+    //   {video: true}
+    //   )
+
+    const stream = await navigator.mediaDevices.getDisplayMedia({video: true})
+    const audio = await navigator.mediaDevices.getUserMedia({audio: true})
+    var streams = [stream,audio]
+    return streams
     
-    return stream
   } catch (exception) {
     console.error(exception)
   }
@@ -29,7 +54,9 @@ export const initiateConnection = async () => {
     // create a connection
     // using Google public stun server for ICE Candidate exchange
     const configuration = {
-      iceServer: [{ urls:'stun:stun2.1.google.com:19302'}]
+      //iceServer: [{ urls:'stun:stun2.1.google.com:19302'}]
+      iceServers: [{'urls': 'stun:stun.services.mozilla.com'}, {'urls': 'stun:stun.l.google.com:19302'}, {'urls': 'turn:numb.viagenie.ca','credential': 'webrtc','username': 'websitebeaver@mail.com'}]
+
     }
 
     const connection = new RTCPeerConnection(configuration)
@@ -48,9 +75,10 @@ export const listenToConnectionEvents = (conn, username, remoteUsername, databas
     }
   }
   // when a remote user adds stream to the peer connection, we display it
-  conn.ontrack=function (event){
-    if(remoteVideoRef.srcObject !== event.streams[0]){
-      remoteVideoRef.srcObject=event.streams[0]
+  conn.ontrack=function (e){
+    if(remoteVideoRef.srcObject !== e.streams[0]){
+      remoteVideoRef.srcObject=e.streams[0]
+      console.log(e.streams[0])
     }
   }
 }
@@ -67,11 +95,11 @@ export const sendAnswer = async (conn, localStream, notif, doAnswer, database, u
     const answer = await conn.createAnswer()
     conn.setLocalDescription(answer)
 
-    doAnswer(notif.from,answer,database,username)
+    
 
     // send answer to the other peer
 
-
+    doAnswer(notif.from,answer,database,username)
   } catch (exception) {
     console.error(exception)
   }
@@ -91,16 +119,4 @@ export const addCandidate = (conn, notif) => {
   // apply the new received candidate to the connection
   const candidate = JSON.parse(notif.candidate)
   conn.addIceCandidate(new RTCIceCandidate(candidate))
-}
-
-
-async function startCapture(displayMediaOptions) {
-  let captureStream = null;
-
-  try {
-    captureStream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
-  } catch(err) {
-    console.error("Error: " + err);
-  }
-  return captureStream;
 }

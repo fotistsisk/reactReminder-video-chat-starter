@@ -6,8 +6,8 @@ import adapter from 'webrtc-adapter';
 function App () {
   return (
     <div className='app'>
-      <h1>React Video Chat App</h1>
-      <h2>WebRTC + Firebase</h2>
+      <h1>WebRTC screen sharing App</h1>
+      <h2>Made by Tsiskakis Fotios p3170162</h2>
       <VideoChatContainer/>
     </div>
   )
